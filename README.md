@@ -170,6 +170,10 @@ If the same price value appears multiple times, only one occurrence is kept.
 - Tracks position of each price in the source text
 - Ignores letter-preceded numbers to avoid false positives from product codes (e.g. `DKA2zł`)
 
+## Used by
+
+- [snipe.sale](https://snipe.sale) — price tracking service processing thousands of product pages daily
+
 ## License
 
 MIT License. See [LICENSE](LICENSE).
