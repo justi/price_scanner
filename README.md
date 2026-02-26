@@ -35,16 +35,6 @@ PriceScanner.contains_price?("Only 99,00 zł")  # => true
 PriceScanner.contains_price?("No price here")   # => false
 ```
 
-### GDPR consent detection (optional, requires nokogiri)
-
-```ruby
-require "nokogiri"
-
-doc = Nokogiri::HTML(html)
-node = doc.css(".cookie-banner").first
-PriceScanner::ConsentDetector.consent_node?(node)  # => true/false
-```
-
 ### Advanced API
 
 For finer control, use `Detector` and `Parser` modules directly.
@@ -162,7 +152,7 @@ If the same price value appears multiple times, only one occurrence is kept.
 
 ## Features
 
-- **Zero dependencies** (nokogiri optional, only for consent detection)
+- **Zero dependencies**
 - Case-insensitive currency matching
 - Handles regular spaces, non-breaking spaces (NBSP), and mixed whitespace
 - Tracks position of each price in the source text

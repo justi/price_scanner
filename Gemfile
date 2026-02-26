@@ -8,7 +8,6 @@ gem "rake", "~> 13.0"
 
 group :development, :test do
   gem "bundler-audit", require: false
-  gem "nokogiri"
   gem "rspec", "~> 3.13"
   gem "rubocop", "~> 1.21", require: false
   gem "rubocop-rake"
