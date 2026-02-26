@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module PriceScanner
+  # Detects GDPR/cookie consent banners in HTML nodes (requires nokogiri).
   module ConsentDetector
     CONSENT_TEXT_REGEX = /
       \bcookie\b|\bcookies\b|\bconsent\b|\bgdpr\b|\bprivacy\b|\btracking\b|\bpreferences\b|\bpersonaliz|marketing\s+cookies|
@@ -22,12 +23,18 @@ module PriceScanner
       return false unless node
 
       nodes = [node] + node.ancestors.take(3)
-      text_hit = nodes.any? { |item| item.text.to_s.match?(CONSENT_TEXT_REGEX) }
-      attr_hit = nodes.any? { |item| attribute_text(item).match?(CONSENT_ATTR_REGEX) }
-      return false unless text_hit || attr_hit
+      hits = detect_hits(nodes)
+      return false unless hits[:text] || hits[:attr]
 
-      action_hit = nodes.any? { |item| action_button?(item) }
-      (text_hit && action_hit) || attr_hit
+      (hits[:text] && hits[:action]) || hits[:attr]
+    end
+
+    def detect_hits(nodes)
+      {
+        text: nodes.any? { |item| item.text.to_s.match?(CONSENT_TEXT_REGEX) },
+        attr: nodes.any? { |item| attribute_text(item).match?(CONSENT_ATTR_REGEX) },
+        action: nodes.any? { |item| action_button?(item) }
+      }
     end
 
     def attribute_text(node)
@@ -51,5 +58,7 @@ module PriceScanner
         text.match?(CONSENT_ACTION_REGEX)
       end
     end
+
+    private_class_method :detect_hits, :attribute_text, :action_button?
   end
 end

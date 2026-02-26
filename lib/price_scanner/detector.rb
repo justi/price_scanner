@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module PriceScanner
+  # Extracts prices from text using regex patterns with smart filtering.
   module Detector
     CURRENCIES = {
       pln: { symbols: %w[zł PLN], code: "PLN" },
@@ -17,12 +18,25 @@ module PriceScanner
 
     PER_UNIT_PATTERN = %r{(?:/\s*|za\s+)(?:kg|g|mg|l|ml|szt|m[²³23]?|cm|mm|op|opak|pcs|pc|unit|each|ea|kaps|tabl|tab)\b}i
 
+    NEGATIVE_PREFIXES = ["-", "\u2212"].freeze
+
     RANGE_SEPARATOR_PATTERN = /\s*[–—]\s*|\s+-\s+/
 
     module_function
 
     def extract_prices_from_text(text)
       text_str = text.to_s
+      raw_prices = scan_raw_prices(text_str)
+      filtered = filter_range_prices(raw_prices, text_str)
+      unique = filtered.uniq { |price| price[:value] }
+      filter_savings_by_difference(unique)
+    end
+
+    def contains_price?(text)
+      text.to_s.match?(PRICE_PATTERN)
+    end
+
+    def scan_raw_prices(text_str)
       results = []
       last_end = 0
 
@@ -34,75 +48,79 @@ module PriceScanner
         next unless match_index
 
         last_end = match_index + match_str.length
-
-        value = Parser.normalized_price(match_str)
-        next if value.nil?
-
-        if match_index.positive?
-          char_before = text_str[match_index - 1]
-          next if ["-", "\u2212"].include?(char_before)
-        end
-
-        text_after = text_str[last_end, 200].to_s.gsub(/\s+/, " ").lstrip
-        next if text_after.match?(/\A#{PER_UNIT_PATTERN.source}/i)
-
-        clean_text = match_str.gsub(/\s+/, " ").strip
-        results << { text: clean_text, value: value, position: match_index }
+        result = build_price_result(text_str, match_str, match_index, last_end)
+        results << result if result
       end
 
-      results = filter_range_prices(results, text_str)
-      results = results.uniq { |price| price[:value] }
-      filter_savings_by_difference(results)
+      results
     end
 
-    def contains_price?(text)
-      text.to_s.match?(PRICE_PATTERN)
+    def build_price_result(text_str, match_str, match_index, match_end)
+      value = Parser.normalized_price(match_str)
+      return unless value
+
+      return if negative_price?(text_str, match_index)
+      return if per_unit_price?(text_str, match_end)
+
+      clean_text = match_str.gsub(/\s+/, " ").strip
+      { text: clean_text, value: value, position: match_index }
+    end
+
+    def negative_price?(text_str, match_index)
+      match_index.positive? && NEGATIVE_PREFIXES.include?(text_str[match_index - 1])
+    end
+
+    def per_unit_price?(text_str, match_end)
+      text_after = text_str[match_end, 200].to_s.gsub(/\s+/, " ").lstrip
+      text_after.match?(/\A#{PER_UNIT_PATTERN.source}/i)
     end
 
     def filter_range_prices(prices, text)
       return prices if prices.size < 2
 
-      range_positions = Set.new
+      range_indices = find_range_indices(prices, text)
+      prices.reject.with_index { |_, idx| range_indices.include?(idx) }
+    end
 
-      prices.each_with_index do |price, i|
-        next_price = prices[i + 1]
-        next unless next_price
-
-        start_pos = price[:position] + price[:text].length
+    def find_range_indices(prices, text)
+      indices = Set.new
+      prices.each_cons(2).with_index do |(current, next_price), idx|
+        start_pos = current[:position] + current[:text].length
         end_pos = next_price[:position]
-
         next if end_pos <= start_pos
 
-        between_text = text[start_pos...end_pos]
-
-        if between_text.match?(RANGE_SEPARATOR_PATTERN)
-          range_positions << i
-          range_positions << (i + 1)
+        if text[start_pos...end_pos].match?(RANGE_SEPARATOR_PATTERN)
+          indices << idx
+          indices << (idx + 1)
         end
       end
-
-      prices.each_with_index.reject { |_, i| range_positions.include?(i) }.map(&:first)
+      indices
     end
 
     def filter_savings_by_difference(prices)
       return prices if prices.size < 3
 
-      values = prices.map { |p| p[:value] }
+      values = prices.map { |entry| entry[:value] }
       min_value = values.min
 
-      is_savings = values.combination(2).any? do |a, b|
-        next false if a == min_value || b == min_value
+      return prices unless savings_amount?(values, min_value)
 
-        diff = (a - b).abs
+      prices.reject { |entry| entry[:value] == min_value }
+    end
+
+    def savings_amount?(values, min_value)
+      values.combination(2).any? do |first, second|
+        next false if first == min_value || second == min_value
+
+        diff = (first - second).abs
         next false if diff < [min_value * 0.1, 0.01].max
 
         tolerance = [min_value * 0.02, 1.0].max
         (min_value - diff).abs <= tolerance
       end
-
-      is_savings ? prices.reject { |p| p[:value] == min_value } : prices
     end
 
-    private_class_method :filter_range_prices, :filter_savings_by_difference
+    private_class_method :scan_raw_prices, :build_price_result, :negative_price?, :per_unit_price?,
+                         :filter_range_prices, :find_range_indices, :filter_savings_by_difference, :savings_amount?
   end
 end

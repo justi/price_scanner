@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module PriceScanner
+  # Normalizes price strings into floats and extracts currency codes.
   module Parser
     CURRENCY_MAP = {
       "zł" => "PLN", "pln" => "PLN",
@@ -9,59 +10,43 @@ module PriceScanner
       "£" => "GBP", "gbp" => "GBP"
     }.freeze
 
+    CURRENCY_REGEX = /(pln|usd|eur|gbp|zł|€|\$|£)/i
+
     module_function
 
     def normalized_price(value)
       text = value.to_s.tr("\u00a0", " ").strip
-      return nil if text.nil? || text.empty?
+      return nil if text.empty?
 
       clean = text.gsub(/[^\d.,\s]/, "")
-      return nil if clean.nil? || clean.empty?
+      return nil if clean.empty?
 
-      if clean.include?(",") && clean.include?(".")
-        dot_pos = clean.rindex(".")
-        comma_pos = clean.rindex(",")
-
-        clean = if comma_pos > dot_pos
-                  clean.delete(".").tr(",", ".")
-                else
-                  clean.delete(",")
-                end
-      elsif clean.count(",") == 1 && !clean.include?(".")
-        clean = clean.tr(",", ".")
-      elsif clean.count(",") > 1 && !clean.include?(".")
-        parts = clean.split(",")
-        clean = "#{parts[0...-1].join}.#{parts.last}"
-      end
-
-      clean = clean.gsub(/\s/, "")
-
+      clean = normalize_separators(clean).gsub(/\s/, "")
       Float(clean)
     rescue ArgumentError, TypeError
       nil
     end
 
     def extract_currency(value)
-      return nil if value.nil? || (value.respond_to?(:empty?) && value.empty?)
+      return nil if value.nil? || value.to_s.empty?
 
-      match = value.to_s.match(/(pln|usd|eur|gbp|zł|€|\$|£)/i)
+      match = value.to_s.match(CURRENCY_REGEX)
       return nil unless match
 
-      raw = match[1]
-      CURRENCY_MAP[raw.downcase] || CURRENCY_MAP[raw] || raw.upcase
+      CURRENCY_MAP.fetch(match[1].downcase, match[1].upcase)
     end
 
     def strip_price_mentions(text, *prices)
       cleaned = text.to_s.tr("\u00a0", " ")
       prices.compact.each do |price|
-        next if price.to_s.strip.nil? || price.to_s.strip.empty?
+        price_str = price.to_s.strip
+        next if price_str.empty?
 
         normalized = price.to_s.tr("\u00a0", " ").strip
-        cleaned = cleaned.gsub(normalized, "")
-        cleaned = cleaned.gsub(normalized.gsub(" ", ""), "")
+        cleaned = cleaned.gsub(normalized, "").gsub(normalized.delete(" "), "")
 
         price_value = normalized_price(price)
-        next if price_value.nil?
+        next unless price_value
 
         cleaned = cleaned.gsub(price_regex_from_value(price_value), "")
       end
@@ -75,5 +60,31 @@ module PriceScanner
       int_pattern = groups.join("[\\s\\u00a0]?")
       /#{int_pattern}[\\.,]#{decimals}\\s?(?:zł|zl|pln)?/i
     end
+
+    def normalize_separators(clean)
+      has_dot = clean.include?(".")
+      comma_count = clean.count(",")
+
+      if comma_count.positive? && has_dot
+        resolve_mixed_separators(clean)
+      elsif comma_count == 1 && !has_dot
+        clean.tr(",", ".")
+      elsif comma_count > 1 && !has_dot
+        parts = clean.split(",")
+        "#{parts[0...-1].join}.#{parts.last}"
+      else
+        clean
+      end
+    end
+
+    def resolve_mixed_separators(clean)
+      if clean.rindex(",") > clean.rindex(".")
+        clean.delete(".").tr(",", ".")
+      else
+        clean.delete(",")
+      end
+    end
+
+    private_class_method :normalize_separators, :resolve_mixed_separators
   end
 end
