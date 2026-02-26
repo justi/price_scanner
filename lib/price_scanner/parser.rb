@@ -12,6 +12,7 @@ module PriceScanner
 
     CURRENCY_REGEX = /(pln|usd|eur|gbp|zł|€|\$|£)/i
     CURRENCY_SUFFIX = /(?:zł|zl|pln|€|eur|\$|usd|£|gbp)/i
+    MULTIPLE_SPACES = /\s{2,}/
 
     module_function
 
@@ -52,7 +53,7 @@ module PriceScanner
         cleaned = cleaned.gsub(price_regex_from_value(price_value), "")
       end
 
-      cleaned.gsub(/\s{2,}/, " ").strip
+      cleaned.gsub(MULTIPLE_SPACES, " ").strip
     end
 
     def price_regex_from_value(value)

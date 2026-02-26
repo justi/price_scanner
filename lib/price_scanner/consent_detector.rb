@@ -17,12 +17,14 @@ module PriceScanner
       quantcast|usercentrics|didomi|cookieyes|termly|iubenda|shopify-pc__banner
     /ix
 
+    ANCESTOR_DEPTH = 3
+
     module_function
 
     def consent_node?(node)
       return false unless node
 
-      nodes = [node] + node.ancestors.take(3)
+      nodes = [node] + node.ancestors.take(ANCESTOR_DEPTH)
       hits = detect_hits(nodes)
       return false unless hits[:text] || hits[:attr]
 

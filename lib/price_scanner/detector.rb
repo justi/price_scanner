@@ -16,6 +16,14 @@ module PriceScanner
 
     RANGE_SEPARATOR_PATTERN = /\s*[–—]\s*|\s+-\s+/
 
+    TEXT_AFTER_LOOKAHEAD = 200
+    MIN_PRICES_FOR_RANGE = 2
+    MIN_PRICES_FOR_SAVINGS = 3
+    SAVINGS_MIN_RATIO = 0.1
+    SAVINGS_MIN_DIFF = 0.01
+    SAVINGS_TOLERANCE_RATIO = 0.02
+    SAVINGS_TOLERANCE_MIN = 1.0
+
     module_function
 
     def extract_prices_from_text(text)
@@ -64,12 +72,12 @@ module PriceScanner
     end
 
     def per_unit_price?(text_str, match_end)
-      text_after = text_str[match_end, 200].to_s.gsub(/\s+/, " ").lstrip
+      text_after = text_str[match_end, TEXT_AFTER_LOOKAHEAD].to_s.gsub(/\s+/, " ").lstrip
       text_after.match?(PER_UNIT_ANCHOR)
     end
 
     def filter_range_prices(prices, text)
-      return prices if prices.size < 2
+      return prices if prices.size < MIN_PRICES_FOR_RANGE
 
       range_indices = find_range_indices(prices, text)
       prices.reject.with_index { |_, idx| range_indices.include?(idx) }
@@ -91,7 +99,7 @@ module PriceScanner
     end
 
     def filter_savings_by_difference(prices)
-      return prices if prices.size < 3
+      return prices if prices.size < MIN_PRICES_FOR_SAVINGS
 
       values = prices.map { |entry| entry[:value] }
       min_value = values.min
@@ -106,9 +114,9 @@ module PriceScanner
         next false if first == min_value || second == min_value
 
         diff = (first - second).abs
-        next false if diff < [min_value * 0.1, 0.01].max
+        next false if diff < [min_value * SAVINGS_MIN_RATIO, SAVINGS_MIN_DIFF].max
 
-        tolerance = [min_value * 0.02, 1.0].max
+        tolerance = [min_value * SAVINGS_TOLERANCE_RATIO, SAVINGS_TOLERANCE_MIN].max
         (min_value - diff).abs <= tolerance
       end
     end
