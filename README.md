@@ -2,8 +2,6 @@
 
 Battle-tested multi-currency price extraction from text. Supports PLN, EUR, GBP, USD with Polish and English number formats.
 
-Extracted from [snipe.sale](https://snipe.sale) — a price tracking service processing thousands of product pages daily.
-
 ## Installation
 
 ```ruby
