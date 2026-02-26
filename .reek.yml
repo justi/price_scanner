@@ -1,0 +1,6 @@
+---
+detectors:
+  TooManyConstants:
+    enabled: false
+  TooManyStatements:
+    max_statements: 7

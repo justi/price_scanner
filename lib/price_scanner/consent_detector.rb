@@ -26,17 +26,21 @@ module PriceScanner
 
       nodes = [node] + node.ancestors.take(ANCESTOR_DEPTH)
       hits = detect_hits(nodes)
-      return false unless hits[:text] || hits[:attr]
+      text_hit = hits[:text]
+      attr_hit = hits[:attr]
+      return false unless text_hit || attr_hit
 
-      (hits[:text] && hits[:action]) || hits[:attr]
+      (text_hit && hits[:action]) || attr_hit
     end
 
     def detect_hits(nodes)
-      {
-        text: nodes.any? { |item| item.text.to_s.match?(CONSENT_TEXT_REGEX) },
-        attr: nodes.any? { |item| attribute_text(item).match?(CONSENT_ATTR_REGEX) },
-        action: nodes.any? { |item| action_button?(item) }
-      }
+      result = { text: false, attr: false, action: false }
+      nodes.each do |item|
+        result[:text] ||= item.text.to_s.match?(CONSENT_TEXT_REGEX)
+        result[:attr] ||= attribute_text(item).match?(CONSENT_ATTR_REGEX)
+        result[:action] ||= action_button?(item)
+      end
+      result
     end
 
     ATTR_KEYS = %w[id class role aria-label aria-modal].freeze

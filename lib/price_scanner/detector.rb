@@ -43,25 +43,29 @@ module PriceScanner
       last_end = 0
 
       text_str.scan(PRICE_PATTERN) do |match_str|
-        next if match_str.empty?
-
-        match_index = text_str.index(match_str, last_end)
-        next unless match_index
-
-        last_end = match_index + match_str.length
-        result = build_price_result(text_str, match_str, match_index, last_end)
+        result, last_end = find_price_at(text_str, match_str, last_end)
         results << result if result
       end
 
       results
     end
 
-    def build_price_result(text_str, match_str, match_index, match_end)
+    def find_price_at(text_str, match_str, search_from)
+      return [nil, search_from] if match_str.empty?
+
+      match_index = text_str.index(match_str, search_from)
+      return [nil, search_from] unless match_index
+
+      match_end = match_index + match_str.length
+      [build_price_result(text_str, match_str, match_index), match_end]
+    end
+
+    def build_price_result(text_str, match_str, match_index)
       value = Parser.normalized_price(match_str)
       return unless value
 
       return if negative_price?(text_str, match_index)
-      return if per_unit_price?(text_str, match_end)
+      return if per_unit_price?(text_str, match_index + match_str.length)
 
       clean_text = match_str.gsub(Parser::COLLAPSE_WHITESPACE, " ").strip
       { text: clean_text, value: value, position: match_index }
@@ -86,16 +90,20 @@ module PriceScanner
     def find_range_indices(prices, text)
       indices = Set.new
       prices.each_cons(2).with_index do |(current, next_price), idx|
-        start_pos = current[:position] + current[:text].length
-        end_pos = next_price[:position]
-        next if end_pos <= start_pos
-
-        if text[start_pos...end_pos].match?(RANGE_SEPARATOR_PATTERN)
+        if range_between?(current, next_price, text)
           indices << idx
           indices << (idx + 1)
         end
       end
       indices
+    end
+
+    def range_between?(current, next_price, text)
+      start_pos = current[:position] + current[:text].length
+      end_pos = next_price[:position]
+      return false if end_pos <= start_pos
+
+      text[start_pos...end_pos].match?(RANGE_SEPARATOR_PATTERN)
     end
 
     def filter_savings_by_difference(prices)
@@ -106,22 +114,27 @@ module PriceScanner
 
       return prices unless savings_amount?(values, min_value)
 
-      prices.reject { |entry| entry[:value] == min_value }
+      prices.zip(values).filter_map { |price, val| price unless val == min_value }
     end
 
     def savings_amount?(values, min_value)
       values.combination(2).any? do |first, second|
         next false if first == min_value || second == min_value
 
-        diff = (first - second).abs
-        next false if diff < [min_value * SAVINGS_MIN_RATIO, SAVINGS_MIN_DIFF].max
-
-        tolerance = [min_value * SAVINGS_TOLERANCE_RATIO, SAVINGS_TOLERANCE_MIN].max
-        (min_value - diff).abs <= tolerance
+        matches_savings_pattern?((first - second).abs, min_value)
       end
     end
 
-    private_class_method :scan_raw_prices, :build_price_result, :negative_price?, :per_unit_price?,
-                         :filter_range_prices, :find_range_indices, :filter_savings_by_difference, :savings_amount?
+    def matches_savings_pattern?(diff, min_value)
+      return false if diff < [min_value * SAVINGS_MIN_RATIO, SAVINGS_MIN_DIFF].max
+
+      tolerance = [min_value * SAVINGS_TOLERANCE_RATIO, SAVINGS_TOLERANCE_MIN].max
+      (min_value - diff).abs <= tolerance
+    end
+
+    private_class_method :scan_raw_prices, :find_price_at, :build_price_result,
+                         :negative_price?, :per_unit_price?,
+                         :filter_range_prices, :find_range_indices, :range_between?,
+                         :filter_savings_by_difference, :savings_amount?, :matches_savings_pattern?
   end
 end

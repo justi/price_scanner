@@ -10,7 +10,7 @@ module PriceScanner
       "£" => "GBP", "gbp" => "GBP"
     }.freeze
 
-    CURRENCY_SYMBOLS = CURRENCY_MAP.keys.map { |k| Regexp.escape(k) }.freeze
+    CURRENCY_SYMBOLS = CURRENCY_MAP.keys.map { |key| Regexp.escape(key) }.freeze
     CURRENCY_REGEX = /(#{CURRENCY_SYMBOLS.join("|")})/i
     CURRENCY_SUFFIX = /(?:#{CURRENCY_SYMBOLS.join("|")})/i
 
@@ -26,10 +26,9 @@ module PriceScanner
       text = value.to_s.tr(NBSP, " ").strip
       return nil if text.empty?
 
-      clean = text.gsub(/[^\d.,\s]/, "")
-      return nil if clean.empty?
+      clean = clean_price_text(text)
+      return nil unless clean
 
-      clean = normalize_separators(clean).gsub(/\s/, "")
       Float(clean)
     rescue ArgumentError, TypeError
       nil
@@ -40,25 +39,14 @@ module PriceScanner
       return nil if text.empty?
 
       match = text.match(CURRENCY_REGEX)
-      return nil unless match
-
-      CURRENCY_MAP.fetch(match[1].downcase, match[1].upcase)
+      resolve_currency(match)
     end
 
     def strip_price_mentions(text, *prices)
       cleaned = text.to_s.tr(NBSP, " ")
       prices.compact.each do |price|
-        normalized = price.to_s.tr(NBSP, " ").strip
-        next if normalized.empty?
-
-        cleaned = cleaned.gsub(normalized, "").gsub(normalized.delete(" "), "")
-
-        price_value = normalized_price(price)
-        next unless price_value
-
-        cleaned = cleaned.gsub(price_regex_from_value(price_value), "")
+        cleaned = strip_single_price(cleaned, price)
       end
-
       cleaned.gsub(MULTIPLE_SPACES, " ").strip
     end
 
@@ -80,19 +68,38 @@ module PriceScanner
       thousands_groups(integer).join("[\\s\\u00a0]?")
     end
 
-    def normalize_separators(clean)
-      has_dot = clean.include?(".")
-      comma_count = clean.count(",")
+    def clean_price_text(text)
+      digits = text.gsub(/[^\d.,\s]/, "")
+      return nil if digits.empty?
 
-      if comma_count.positive? && has_dot
+      normalize_separators(digits).gsub(/\s/, "")
+    end
+
+    def resolve_currency(match)
+      return nil unless match
+
+      symbol = match[1]
+      CURRENCY_MAP.fetch(symbol.downcase, symbol.upcase)
+    end
+
+    def strip_single_price(cleaned, price)
+      normalized = price.to_s.tr(NBSP, " ").strip
+      return cleaned if normalized.empty?
+
+      result = cleaned.gsub(normalized, "").gsub(normalized.delete(" "), "")
+      price_value = normalized_price(price)
+      return result unless price_value
+
+      result.gsub(price_regex_from_value(price_value), "")
+    end
+
+    def normalize_separators(clean)
+      return clean unless clean.include?(",")
+
+      if clean.include?(".")
         resolve_mixed_separators(clean)
-      elsif comma_count == 1 && !has_dot
-        clean.tr(",", ".")
-      elsif comma_count > 1 && !has_dot
-        parts = clean.split(",")
-        "#{parts[0...-1].join}.#{parts.last}"
       else
-        clean
+        resolve_comma_only(clean)
       end
     end
 
@@ -104,6 +111,17 @@ module PriceScanner
       end
     end
 
-    private_class_method :normalize_separators, :resolve_mixed_separators
+    def resolve_comma_only(clean)
+      parts = clean.split(",")
+      if parts.size == 2
+        clean.tr(",", ".")
+      else
+        "#{parts[0...-1].join}.#{parts.last}"
+      end
+    end
+
+    private_class_method :clean_price_text, :resolve_currency, :strip_single_price,
+                         :normalize_separators, :resolve_mixed_separators,
+                         :resolve_comma_only
   end
 end
