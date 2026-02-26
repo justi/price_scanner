@@ -94,14 +94,57 @@ RSpec.describe PriceScanner::Parser do
     end
   end
 
+  describe ".split_price_parts" do
+    it "splits simple price into integer and decimals" do
+      expect(described_class.split_price_parts(99.0)).to eq(%w[99 00])
+    end
+
+    it "splits price with cents" do
+      expect(described_class.split_price_parts(49.99)).to eq(%w[49 99])
+    end
+
+    it "splits large price" do
+      expect(described_class.split_price_parts(12_345.67)).to eq(%w[12345 67])
+    end
+  end
+
+  describe ".thousands_groups" do
+    it "returns single group for small numbers" do
+      expect(described_class.thousands_groups("99")).to eq(%w[99])
+    end
+
+    it "splits 4-digit number into two groups" do
+      expect(described_class.thousands_groups("1299")).to eq(%w[1 299])
+    end
+
+    it "splits 5-digit number correctly" do
+      expect(described_class.thousands_groups("12345")).to eq(%w[12 345])
+    end
+
+    it "splits 7-digit number into three groups" do
+      expect(described_class.thousands_groups("1234567")).to eq(%w[1 234 567])
+    end
+  end
+
+  describe ".thousands_pattern" do
+    it "returns digits for small numbers" do
+      expect(described_class.thousands_pattern("99")).to eq("99")
+    end
+
+    it "joins groups with optional separator" do
+      pattern = described_class.thousands_pattern("1299")
+      expect(pattern).to eq("1[\\s\\u00a0]?299")
+    end
+  end
+
   describe ".price_regex_from_value" do
-    it "builds regex matching PLN price format" do
+    it "matches PLN price format" do
       regex = described_class.price_regex_from_value(99.0)
       expect("99,00 zł").to match(regex)
       expect("99.00 pln").to match(regex)
     end
 
-    it "builds regex matching EUR price format" do
+    it "matches EUR price format" do
       regex = described_class.price_regex_from_value(49.99)
       expect("49,99 eur").to match(regex)
       expect("49.99 gbp").to match(regex)
