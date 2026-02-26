@@ -22,11 +22,11 @@ module PriceScanner
         dot_pos = clean.rindex(".")
         comma_pos = clean.rindex(",")
 
-        if comma_pos > dot_pos
-          clean = clean.delete(".").tr(",", ".")
-        else
-          clean = clean.delete(",")
-        end
+        clean = if comma_pos > dot_pos
+                  clean.delete(".").tr(",", ".")
+                else
+                  clean.delete(",")
+                end
       elsif clean.count(",") == 1 && !clean.include?(".")
         clean = clean.tr(",", ".")
       elsif clean.count(",") > 1 && !clean.include?(".")

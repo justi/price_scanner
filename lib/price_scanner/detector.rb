@@ -40,7 +40,7 @@ module PriceScanner
 
         if match_index.positive?
           char_before = text_str[match_index - 1]
-          next if char_before == "-" || char_before == "\u2212"
+          next if ["-", "\u2212"].include?(char_before)
         end
 
         text_after = text_str[last_end, 200].to_s.gsub(/\s+/, " ").lstrip

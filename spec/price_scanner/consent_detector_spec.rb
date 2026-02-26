@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "nokogiri"
+require "price_scanner/consent_detector"
 
 RSpec.describe PriceScanner::ConsentDetector do
   def parse_html(html)

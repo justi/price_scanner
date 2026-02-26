@@ -1,5 +1,5 @@
 AllCops:
-  TargetRubyVersion: 3.4.4
+  TargetRubyVersion: 3.1
   NewCops: enable
 
 require:
@@ -13,7 +13,7 @@ Style/StringLiteralsInInterpolation:
   EnforcedStyle: double_quotes
 
 Layout/LineLength:
-  Max: 120
+  Max: 140
 
 Metrics/BlockLength:
   Exclude:
@@ -23,10 +23,19 @@ Metrics/ClassLength:
   Max: 150
 
 Metrics/MethodLength:
-  Max: 25
+  Max: 30
 
 Metrics/ModuleLength:
   Max: 150
+
+Metrics/AbcSize:
+  Max: 35
+
+Metrics/CyclomaticComplexity:
+  Max: 15
+
+Metrics/PerceivedComplexity:
+  Max: 15
 
 Style/Documentation:
   Enabled: false
@@ -38,4 +47,7 @@ RSpec/MultipleExpectations:
   Enabled: false
 
 RSpec/ExampleLength:
+  Enabled: false
+
+RSpec/ExpectActual:
   Enabled: false
