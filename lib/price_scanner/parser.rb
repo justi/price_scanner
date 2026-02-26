@@ -13,11 +13,14 @@ module PriceScanner
     CURRENCY_REGEX = /(pln|usd|eur|gbp|zł|€|\$|£)/i
     CURRENCY_SUFFIX = /(?:zł|zl|pln|€|eur|\$|usd|£|gbp)/i
     MULTIPLE_SPACES = /\s{2,}/
+    NBSP = "\u00a0"
+    DECIMAL_PLACES = 2
+    THOUSANDS_GROUP = /.{1,3}/
 
     module_function
 
     def normalized_price(value)
-      text = value.to_s.tr("\u00a0", " ").strip
+      text = value.to_s.tr(NBSP, " ").strip
       return nil if text.empty?
 
       clean = text.gsub(/[^\d.,\s]/, "")
@@ -40,9 +43,9 @@ module PriceScanner
     end
 
     def strip_price_mentions(text, *prices)
-      cleaned = text.to_s.tr("\u00a0", " ")
+      cleaned = text.to_s.tr(NBSP, " ")
       prices.compact.each do |price|
-        normalized = price.to_s.tr("\u00a0", " ").strip
+        normalized = price.to_s.tr(NBSP, " ").strip
         next if normalized.empty?
 
         cleaned = cleaned.gsub(normalized, "").gsub(normalized.delete(" "), "")
@@ -63,11 +66,11 @@ module PriceScanner
     end
 
     def split_price_parts(value)
-      format("%.2f", value).split(".")
+      format("%.#{DECIMAL_PLACES}f", value).split(".")
     end
 
     def thousands_groups(integer)
-      integer.reverse.scan(/.{1,3}/).map(&:reverse).reverse
+      integer.reverse.scan(THOUSANDS_GROUP).map(&:reverse).reverse
     end
 
     def thousands_pattern(integer)
