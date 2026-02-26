@@ -63,7 +63,7 @@ module PriceScanner
       return if negative_price?(text_str, match_index)
       return if per_unit_price?(text_str, match_end)
 
-      clean_text = match_str.gsub(/\s+/, " ").strip
+      clean_text = match_str.gsub(Parser::COLLAPSE_WHITESPACE, " ").strip
       { text: clean_text, value: value, position: match_index }
     end
 
@@ -72,7 +72,7 @@ module PriceScanner
     end
 
     def per_unit_price?(text_str, match_end)
-      text_after = text_str[match_end, TEXT_AFTER_LOOKAHEAD].to_s.gsub(/\s+/, " ").lstrip
+      text_after = text_str[match_end, TEXT_AFTER_LOOKAHEAD].to_s.gsub(Parser::COLLAPSE_WHITESPACE, " ").lstrip
       text_after.match?(PER_UNIT_ANCHOR)
     end
 

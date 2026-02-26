@@ -39,28 +39,23 @@ module PriceScanner
       }
     end
 
+    ATTR_KEYS = %w[id class role aria-label aria-modal].freeze
+    ACTION_SELECTOR = "button, [role='button'], input[type='button'], input[type='submit'], a"
+
     def attribute_text(node)
-      [
-        node["id"],
-        node["class"],
-        node["role"],
-        node["aria-label"],
-        node["aria-modal"]
-      ].compact.join(" ")
+      ATTR_KEYS.filter_map { |key| node[key] }.join(" ")
     end
 
     def action_button?(node)
-      node.css("button, [role='button'], input[type='button'], input[type='submit'], a").any? do |button|
-        text = [
-          button.text,
-          button["aria-label"],
-          button["title"],
-          button["value"]
-        ].compact.join(" ")
-        text.match?(CONSENT_ACTION_REGEX)
+      node.css(ACTION_SELECTOR).any? do |button|
+        collect_text(button).match?(CONSENT_ACTION_REGEX)
       end
     end
 
-    private_class_method :detect_hits, :attribute_text, :action_button?
+    def collect_text(node)
+      [node.text, node["aria-label"], node["title"], node["value"]].compact.join(" ")
+    end
+
+    private_class_method :detect_hits, :attribute_text, :action_button?, :collect_text
   end
 end

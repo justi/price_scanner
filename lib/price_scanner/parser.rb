@@ -4,15 +4,18 @@ module PriceScanner
   # Normalizes price strings into floats and extracts currency codes.
   module Parser
     CURRENCY_MAP = {
-      "zł" => "PLN", "pln" => "PLN",
+      "zł" => "PLN", "pln" => "PLN", "zl" => "PLN",
       "€" => "EUR", "eur" => "EUR",
       "$" => "USD", "usd" => "USD",
       "£" => "GBP", "gbp" => "GBP"
     }.freeze
 
-    CURRENCY_REGEX = /(pln|usd|eur|gbp|zł|€|\$|£)/i
-    CURRENCY_SUFFIX = /(?:zł|zl|pln|€|eur|\$|usd|£|gbp)/i
+    CURRENCY_SYMBOLS = CURRENCY_MAP.keys.map { |k| Regexp.escape(k) }.freeze
+    CURRENCY_REGEX = /(#{CURRENCY_SYMBOLS.join("|")})/i
+    CURRENCY_SUFFIX = /(?:#{CURRENCY_SYMBOLS.join("|")})/i
+
     MULTIPLE_SPACES = /\s{2,}/
+    COLLAPSE_WHITESPACE = /\s+/
     NBSP = "\u00a0"
     DECIMAL_PLACES = 2
     THOUSANDS_GROUP = /.{1,3}/
