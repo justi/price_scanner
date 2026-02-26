@@ -11,6 +11,7 @@ module PriceScanner
     }.freeze
 
     CURRENCY_REGEX = /(pln|usd|eur|gbp|zł|€|\$|£)/i
+    CURRENCY_SUFFIX = /(?:zł|zl|pln|€|eur|\$|usd|£|gbp)/i
 
     module_function
 
@@ -28,9 +29,10 @@ module PriceScanner
     end
 
     def extract_currency(value)
-      return nil if value.nil? || value.to_s.empty?
+      text = value.to_s
+      return nil if text.empty?
 
-      match = value.to_s.match(CURRENCY_REGEX)
+      match = text.match(CURRENCY_REGEX)
       return nil unless match
 
       CURRENCY_MAP.fetch(match[1].downcase, match[1].upcase)
@@ -39,10 +41,9 @@ module PriceScanner
     def strip_price_mentions(text, *prices)
       cleaned = text.to_s.tr("\u00a0", " ")
       prices.compact.each do |price|
-        price_str = price.to_s.strip
-        next if price_str.empty?
-
         normalized = price.to_s.tr("\u00a0", " ").strip
+        next if normalized.empty?
+
         cleaned = cleaned.gsub(normalized, "").gsub(normalized.delete(" "), "")
 
         price_value = normalized_price(price)
@@ -58,7 +59,7 @@ module PriceScanner
       integer, decimals = format("%.2f", value).split(".")
       groups = integer.reverse.scan(/.{1,3}/).reverse
       int_pattern = groups.join("[\\s\\u00a0]?")
-      /#{int_pattern}[\\.,]#{decimals}\\s?(?:zł|zl|pln)?/i
+      /#{int_pattern}[\\.,]#{decimals}\\s?#{CURRENCY_SUFFIX.source}?/i
     end
 
     def normalize_separators(clean)

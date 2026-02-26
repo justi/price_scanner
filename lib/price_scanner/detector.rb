@@ -3,13 +3,6 @@
 module PriceScanner
   # Extracts prices from text using regex patterns with smart filtering.
   module Detector
-    CURRENCIES = {
-      pln: { symbols: %w[zł PLN], code: "PLN" },
-      eur: { symbols: %w[€ EUR eur], code: "EUR" },
-      usd: { symbols: %w[$ USD usd], code: "USD" },
-      gbp: { symbols: %w[£ GBP gbp], code: "GBP" }
-    }.freeze
-
     PRICE_PATTERN = /
       (?:zł|pln|€|\$|£)[\s\u00a0]*(?:\d{1,3}(?:[.\s\u00a0]\d{3})+|\d{1,4})(?:[.,]\d{1,2})?  |
       (?<![a-zA-Z])(?:\d{1,3}(?:[.\s\u00a0]\d{3})+|\d{1,4})[.,]\d{2}[\s\u00a0]*(?:zł|pln|€|\$|£|eur|usd|gbp)(?!\d)  |
@@ -17,6 +10,7 @@ module PriceScanner
     /ix
 
     PER_UNIT_PATTERN = %r{(?:/\s*|za\s+)(?:kg|g|mg|l|ml|szt|m[²³23]?|cm|mm|op|opak|pcs|pc|unit|each|ea|kaps|tabl|tab)\b}i
+    PER_UNIT_ANCHOR = /\A#{PER_UNIT_PATTERN.source}/i
 
     NEGATIVE_PREFIXES = ["-", "\u2212"].freeze
 
@@ -40,9 +34,8 @@ module PriceScanner
       results = []
       last_end = 0
 
-      text_str.scan(PRICE_PATTERN) do |match|
-        match_str = match.is_a?(Array) ? match.first : match
-        next if match_str.nil? || match_str.empty?
+      text_str.scan(PRICE_PATTERN) do |match_str|
+        next if match_str.empty?
 
         match_index = text_str.index(match_str, last_end)
         next unless match_index
@@ -72,7 +65,7 @@ module PriceScanner
 
     def per_unit_price?(text_str, match_end)
       text_after = text_str[match_end, 200].to_s.gsub(/\s+/, " ").lstrip
-      text_after.match?(/\A#{PER_UNIT_PATTERN.source}/i)
+      text_after.match?(PER_UNIT_ANCHOR)
     end
 
     def filter_range_prices(prices, text)
