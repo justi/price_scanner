@@ -13,5 +13,4 @@ group :development, :test do
   gem "rubocop", "~> 1.21", require: false
   gem "rubocop-rake"
   gem "rubocop-rspec", "~> 3.0"
-  gem "rubycritic", require: false
 end

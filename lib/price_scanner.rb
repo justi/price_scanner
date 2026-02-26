@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "price_scanner/version"
-require_relative "price_scanner/parser"
-require_relative "price_scanner/detector"
+Dir.glob(File.join(__dir__, "price_scanner", "*.rb")).each { |f| require_relative f }
 
 # Multi-currency price extraction from text.
 module PriceScanner
