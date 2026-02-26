@@ -57,9 +57,9 @@ module PriceScanner
 
     def price_regex_from_value(value)
       integer, decimals = format("%.2f", value).split(".")
-      groups = integer.reverse.scan(/.{1,3}/).reverse
+      groups = integer.reverse.scan(/.{1,3}/).map(&:reverse).reverse
       int_pattern = groups.join("[\\s\\u00a0]?")
-      /#{int_pattern}[\\.,]#{decimals}\\s?#{CURRENCY_SUFFIX.source}?/i
+      /#{int_pattern}[.,]#{decimals}\s?#{CURRENCY_SUFFIX.source}?/i
     end
 
     def normalize_separators(clean)

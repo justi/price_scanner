@@ -60,5 +60,57 @@ RSpec.describe PriceScanner::Parser do
     it "returns nil for nil input" do
       expect(described_class.extract_currency(nil)).to be_nil
     end
+
+    it "extracts currency from text code (PLN, EUR)" do
+      expect(described_class.extract_currency("99.00 PLN")).to eq("PLN")
+      expect(described_class.extract_currency("99.00 eur")).to eq("EUR")
+    end
+  end
+
+  describe ".strip_price_mentions" do
+    it "removes price text from string" do
+      result = described_class.strip_price_mentions("Cena: 99,00 zł rabat", "99,00 zł")
+      expect(result).to eq("Cena: rabat")
+    end
+
+    it "removes multiple prices" do
+      result = described_class.strip_price_mentions("Old 199,00 zł New 99,00 zł", "199,00 zł", "99,00 zł")
+      expect(result).to eq("Old New")
+    end
+
+    it "removes NBSP variants of price" do
+      result = described_class.strip_price_mentions("Cena: 99,00\u00a0zł ok", "99,00 zł")
+      expect(result).to eq("Cena: ok")
+    end
+
+    it "handles nil prices in list" do
+      result = described_class.strip_price_mentions("Cena: 99,00 zł", nil, "99,00 zł")
+      expect(result).to eq("Cena:")
+    end
+
+    it "returns original text when no prices match" do
+      result = described_class.strip_price_mentions("No price here", "99,00 zł")
+      expect(result).to eq("No price here")
+    end
+  end
+
+  describe ".price_regex_from_value" do
+    it "builds regex matching PLN price format" do
+      regex = described_class.price_regex_from_value(99.0)
+      expect("99,00 zł").to match(regex)
+      expect("99.00 pln").to match(regex)
+    end
+
+    it "builds regex matching EUR price format" do
+      regex = described_class.price_regex_from_value(49.99)
+      expect("49,99 eur").to match(regex)
+      expect("49.99 gbp").to match(regex)
+    end
+
+    it "handles thousands with optional separator" do
+      regex = described_class.price_regex_from_value(1299.0)
+      expect("1299,00 zł").to match(regex)
+      expect("1 299,00").to match(regex)
+    end
   end
 end
