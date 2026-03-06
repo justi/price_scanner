@@ -105,9 +105,11 @@ RSpec.describe PriceScanner::Detector do
         expect(values).to eq([59.0])
       end
 
-      it "does not extract false price from model HC940 €89 zł" do
-        values = extract_values("Model HC940 89,00 zł")
-        expect(values).to eq([89.0])
+      it "does not extract false price from H265 $ (digit-digit before currency)" do
+        # "H265 $ 49.99" — digit 5 preceded by digit 6 must not form "65 $" price
+        # Without \d in lookbehind, alt 3 matches "65" + " $" as a false price
+        values = extract_values("Standard H265 $ 49.99")
+        expect(values).to eq([49.99])
       end
 
       it "does not extract 5 € from IP65 followed by euro price" do
