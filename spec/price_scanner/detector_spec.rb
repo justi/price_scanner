@@ -89,6 +89,45 @@ RSpec.describe PriceScanner::Detector do
       end
     end
 
+    context "with model numbers containing digits before currency symbol" do
+      it "does not extract false price from IP65 €75.00 (cnsuntek bug)" do
+        values = extract_values("Waterproof IP65 € 75.00")
+        expect(values).to eq([75.0])
+      end
+
+      it "does not extract false price from IP67 €99.00" do
+        values = extract_values("Camera IP67 €99.00")
+        expect(values).to eq([99.0])
+      end
+
+      it "does not extract false price from 2K 30MP €59.00" do
+        values = extract_values("Live Streaming 2K 30MP € 59.00")
+        expect(values).to eq([59.0])
+      end
+
+      it "does not extract false price from H265 $ (digit-digit before currency)" do
+        # "H265 $ 49.99" — digit 5 preceded by digit 6 must not form "65 $" price
+        # Without \d in lookbehind, alt 3 matches "65" + " $" as a false price
+        values = extract_values("Standard H265 $ 49.99")
+        expect(values).to eq([49.99])
+      end
+
+      it "does not extract 5 € from IP65 followed by euro price" do
+        values = extract_values("IP65 € 75.00 Original price was: €75.00. € 59.00 Current price is: €59.00.")
+        expect(values).to eq([59.0, 75.0])
+      end
+
+      it "still extracts legitimate single-digit prices" do
+        values = extract_values("Only 5 € left!")
+        expect(values).to eq([5.0])
+      end
+
+      it "still extracts price preceded by space and digit" do
+        values = extract_values("Pack of 3 - 29,99 zł")
+        expect(values).to eq([29.99])
+      end
+    end
+
     context "with real-world cases" do
       it "percentage badge before prices (25% zniżki)" do
         values = extract_values("25% zniżki 100,00 zł 75,00 zł")
