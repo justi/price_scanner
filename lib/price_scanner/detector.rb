@@ -72,7 +72,25 @@ module PriceScanner
     end
 
     def negative_price?(text_str, match_index)
-      match_index.positive? && NEGATIVE_PREFIXES.include?(text_str[match_index - 1])
+      return false unless match_index.positive?
+
+      # Direct prefix: "-1.040,00 zł"
+      return true if NEGATIVE_PREFIXES.include?(text_str[match_index - 1])
+
+      # Spaced prefix: "- 1.040 zł" — only when dash is at start or preceded by non-digit
+      # "Pack of 3 - 29,99 zł" → dash after digit = range separator, not negative
+      i = match_index - 1
+      i -= 1 while i >= 0 && text_str[i] =~ /\s/
+      return false unless i >= 0 && NEGATIVE_PREFIXES.include?(text_str[i])
+
+      # Dash at start of text = negative
+      return true if i == 0
+
+      # Check what's before the dash (skip whitespace)
+      j = i - 1
+      j -= 1 while j >= 0 && text_str[j] =~ /\s/
+      # Dash after digit = range separator ("3 - 29,99"), not negative
+      j < 0 || text_str[j] !~ /\d/
     end
 
     def per_unit_price?(text_str, match_end)

@@ -62,6 +62,11 @@ RSpec.describe PriceScanner::Detector do
       expect(values).to eq([349.0, 449.0])
     end
 
+    it "ignores negative prices with space after dash (- 1.040 zł)" do
+      values = extract_values("- 1.040 zł Kobra S1 Max Combo 3.539,00 zł 4.579,00 zł -1.040,00 zł")
+      expect(values).to eq([3539.0, 4579.0])
+    end
+
     it "extracts price at beginning of text (no preceding char)" do
       values = extract_values("349,00 zł")
       expect(values).to eq([349.0])
