@@ -74,23 +74,19 @@ module PriceScanner
     def negative_price?(text_str, match_index)
       return false unless match_index.positive?
 
-      # Direct prefix: "-1.040,00 zł"
-      return true if NEGATIVE_PREFIXES.include?(text_str[match_index - 1])
+      # Find the non-whitespace char before price: "-1.040" or "- 1.040"
+      dash_pos = rindex_non_space(text_str, match_index - 1)
+      return false unless dash_pos && NEGATIVE_PREFIXES.include?(text_str[dash_pos])
 
-      # Spaced prefix: "- 1.040 zł" — only when dash is at start or preceded by non-digit
-      # "Pack of 3 - 29,99 zł" → dash after digit = range separator, not negative
-      i = match_index - 1
+      # Dash at start of text = negative; after digit = range separator ("3 - 29,99")
+      before_dash = rindex_non_space(text_str, dash_pos - 1)
+      before_dash.nil? || text_str[before_dash] !~ /\d/
+    end
+
+    def rindex_non_space(text_str, from)
+      i = from
       i -= 1 while i >= 0 && text_str[i] =~ /\s/
-      return false unless i >= 0 && NEGATIVE_PREFIXES.include?(text_str[i])
-
-      # Dash at start of text = negative
-      return true if i == 0
-
-      # Check what's before the dash (skip whitespace)
-      j = i - 1
-      j -= 1 while j >= 0 && text_str[j] =~ /\s/
-      # Dash after digit = range separator ("3 - 29,99"), not negative
-      j < 0 || text_str[j] !~ /\d/
+      i >= 0 ? i : nil
     end
 
     def per_unit_price?(text_str, match_end)
@@ -151,7 +147,7 @@ module PriceScanner
     end
 
     private_class_method :scan_raw_prices, :find_price_at, :build_price_result,
-                         :negative_price?, :per_unit_price?,
+                         :negative_price?, :rindex_non_space, :per_unit_price?,
                          :filter_range_prices, :find_range_indices, :range_between?,
                          :filter_savings_by_difference, :savings_amount?, :matches_savings_pattern?
   end
