@@ -14,6 +14,10 @@ RSpec.describe PriceScanner::Detector do
       expect("1 019,00 zł").to match(described_class::PRICE_PATTERN)
     end
 
+    it "matches price with comma as thousands separator (7,999.00 €)" do
+      expect("7,999.00 €").to match(described_class::PRICE_PATTERN)
+    end
+
     it "matches simple price without thousands (799,00 zł)" do
       expect("799,00 zł").to match(described_class::PRICE_PATTERN)
     end
@@ -45,6 +49,26 @@ RSpec.describe PriceScanner::Detector do
       expect(prices.size).to eq(1)
       expect(prices.first[:text]).to eq("1 019,00 zł")
       expect(prices.first[:value]).to be_within(0.01).of(1019.0)
+    end
+
+    it "extracts full price with comma thousands separator and dot decimal (7,999.00 €)" do
+      prices = described_class.extract_prices_from_text("Price: 7,999.00 €")
+      expect(prices.size).to eq(1)
+      expect(prices.first[:text]).to eq("7,999.00 €")
+      expect(prices.first[:value]).to be_within(0.01).of(7999.0)
+    end
+
+    it "extracts VITKAC-style prices with comma thousands (old + new + omnibus)" do
+      text = "8,289.00 € 4,144.50 € -50% Lowest price: 4,144.50 €"
+      values = extract_values(text)
+      expect(values).to include(be_within(0.01).of(8289.0))
+      expect(values).to include(be_within(0.01).of(4144.5))
+    end
+
+    it "extracts price with comma thousands and currency prefix ($1,299.99)" do
+      prices = described_class.extract_prices_from_text("$1,299.99")
+      expect(prices.size).to eq(1)
+      expect(prices.first[:value]).to be_within(0.01).of(1299.99)
     end
 
     it "extracts multiple prices with different formats" do

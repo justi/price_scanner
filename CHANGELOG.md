@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3
+
+- Fix comma-as-thousands-separator not recognized in PRICE_PATTERN (`7,999.00 €` → was parsed as `999.00 €`)
+- Affects prices in English/international format: `$1,299.99`, `8,289.00 €`, etc.
+- Safe change: requires exactly 3 digits after separator, so decimal commas (`19,99 zł`) still work correctly
+
 ## 0.2.2
 
 - Fix negative price detection with spaced dash ("- 1.040 zł") — savings badges with space between minus and price were not filtered

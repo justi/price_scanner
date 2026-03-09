@@ -4,9 +4,9 @@ module PriceScanner
   # Extracts prices from text using regex patterns with smart filtering.
   module Detector
     PRICE_PATTERN = /
-      (?:zł|pln|€|\$|£)[\s\u00a0]*(?:\d{1,3}(?:[.\s\u00a0]\d{3})+|\d{1,4})(?:[.,]\d{1,2})?  |
-      (?<![a-zA-Z\d])(?:\d{1,3}(?:[.\s\u00a0]\d{3})+|\d{1,4})[.,]\d{2}[\s\u00a0]*(?:zł|pln|€|\$|£|eur|usd|gbp)(?!\d)  |
-      (?<![a-zA-Z\d])(?:\d{1,3}(?:[.\s\u00a0]\d{3})+|\d{1,4})[\s\u00a0]*(?:zł|pln|€|\$|£)(?!\d)
+      (?:zł|pln|€|\$|£)[\s\u00a0]*(?:\d{1,3}(?:[.,\s\u00a0]\d{3})+|\d{1,4})(?:[.,]\d{1,2})?  |
+      (?<![a-zA-Z\d])(?:\d{1,3}(?:[.,\s\u00a0]\d{3})+|\d{1,4})[.,]\d{2}[\s\u00a0]*(?:zł|pln|€|\$|£|eur|usd|gbp)(?!\d)  |
+      (?<![a-zA-Z\d])(?:\d{1,3}(?:[.,\s\u00a0]\d{3})+|\d{1,4})[\s\u00a0]*(?:zł|pln|€|\$|£)(?!\d)
     /ix
 
     PER_UNIT_PATTERN = %r{(?:/\s*|za\s+)(?:kg|g|mg|l|ml|szt|m[²³23]?|cm|mm|op|opak|pcs|pc|unit|each|ea|kaps|tabl|tab)\b}i
