@@ -26,9 +26,9 @@ module PriceScanner
 
     module_function
 
-    def extract_prices_from_text(text)
+    def extract_prices_from_text(text, include_per_unit: false)
       text_str = text.to_s
-      raw_prices = scan_raw_prices(text_str)
+      raw_prices = scan_raw_prices(text_str, include_per_unit: include_per_unit)
       filtered = filter_range_prices(raw_prices, text_str)
       unique = filtered.uniq { |price| price[:value] }
       filter_savings_by_difference(unique)
@@ -38,34 +38,34 @@ module PriceScanner
       text.to_s.match?(PRICE_PATTERN)
     end
 
-    def scan_raw_prices(text_str)
+    def scan_raw_prices(text_str, include_per_unit: false)
       results = []
       last_end = 0
 
       text_str.scan(PRICE_PATTERN) do |match_str|
-        result, last_end = find_price_at(text_str, match_str, last_end)
+        result, last_end = find_price_at(text_str, match_str, last_end, include_per_unit: include_per_unit)
         results << result if result
       end
 
       results
     end
 
-    def find_price_at(text_str, match_str, search_from)
+    def find_price_at(text_str, match_str, search_from, include_per_unit: false)
       return [nil, search_from] if match_str.empty?
 
       match_index = text_str.index(match_str, search_from)
       return [nil, search_from] unless match_index
 
       match_end = match_index + match_str.length
-      [build_price_result(text_str, match_str, match_index), match_end]
+      [build_price_result(text_str, match_str, match_index, include_per_unit: include_per_unit), match_end]
     end
 
-    def build_price_result(text_str, match_str, match_index)
+    def build_price_result(text_str, match_str, match_index, include_per_unit: false)
       value = Parser.normalized_price(match_str)
       return unless value
 
       return if negative_price?(text_str, match_index)
-      return if per_unit_price?(text_str, match_index + match_str.length)
+      return if !include_per_unit && per_unit_price?(text_str, match_index + match_str.length)
 
       clean_text = match_str.gsub(Parser::COLLAPSE_WHITESPACE, " ").strip
       { text: clean_text, value: value, position: match_index }

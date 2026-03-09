@@ -134,7 +134,7 @@ PriceScanner.scan("Was 449,00 zł, now 349,00 zł. You save 100,00 zł!")
 
 ### Per-unit prices
 
-Prices followed by a unit indicator are filtered out.
+Prices followed by a unit indicator are filtered out by default.
 
 Supported units: `kg`, `g`, `mg`, `l`, `ml`, `szt`, `m`, `m²`, `m³`, `cm`, `mm`, `op`, `opak`, `pcs`, `pc`, `unit`, `each`, `ea`, `kaps`, `tabl`, `tab`
 
@@ -144,6 +144,13 @@ Recognized prefixes: `/` (slash) and `za` (Polish "per").
 PriceScanner.scan("32,74 zł/kg — buy 500g for 16,37 zł")
 # => [{ amount: 16.37, currency: "PLN", text: "16,37 zł" }]
 # 32,74 zł/kg is excluded
+```
+
+For products priced exclusively per unit (e.g., fabrics sold per meter, bulk goods per kg), pass `include_per_unit: true`:
+
+```ruby
+PriceScanner::Detector.extract_prices_from_text("£46.00/M £13.55/M", include_per_unit: true)
+# => [{text: "£46.00/M", value: 46.0}, {text: "£13.55/M", value: 13.55}]
 ```
 
 ### Deduplication

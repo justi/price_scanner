@@ -76,6 +76,30 @@ RSpec.describe PriceScanner::Detector do
       expect(values).to eq([799.0, 1019.0])
     end
 
+    context "per-unit prices" do
+      it "filters per-unit prices by default (£46.00/M)" do
+        values = extract_values("£46.00/M £13.55/M")
+        expect(values).to be_empty
+      end
+
+      it "includes per-unit prices when include_per_unit: true" do
+        prices = described_class.extract_prices_from_text("£46.00/M £13.55/M", include_per_unit: true)
+        values = prices.map { |p| p[:value] }.sort
+        expect(values).to eq([13.55, 46.0])
+      end
+
+      it "includes per-unit prices with Polish format (29,99 zł/kg)" do
+        prices = described_class.extract_prices_from_text("29,99 zł/kg", include_per_unit: true)
+        expect(prices.size).to eq(1)
+        expect(prices.first[:value]).to be_within(0.01).of(29.99)
+      end
+
+      it "still filters per-unit by default even with other prices present" do
+        values = extract_values("£599.00 £46.00/M")
+        expect(values).to eq([599.0])
+      end
+    end
+
     it "ignores negative prices (discount badges like -100,00 zł)" do
       values = extract_values("449,00 zł -100,00 zł 349,00 zł")
       expect(values).to eq([349.0, 449.0])

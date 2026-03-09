@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- Add `include_per_unit:` option to `extract_prices_from_text` — allows including per-unit prices (`£46.00/M`, `29,99 zł/kg`) that are filtered by default
+
 ## 0.2.3
 
 - Fix comma-as-thousands-separator not recognized in PRICE_PATTERN (`7,999.00 €` → was parsed as `999.00 €`)
