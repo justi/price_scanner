@@ -14,6 +14,10 @@ RSpec.describe PriceScanner::Detector do
       expect("1 019,00 zł").to match(described_class::PRICE_PATTERN)
     end
 
+    it "matches price with narrow no-break space as thousands separator (3\u202f499,00€)" do
+      expect("3\u202f499,00€").to match(described_class::PRICE_PATTERN)
+    end
+
     it "matches price with comma as thousands separator (7,999.00 €)" do
       expect("7,999.00 €").to match(described_class::PRICE_PATTERN)
     end
@@ -181,6 +185,32 @@ RSpec.describe PriceScanner::Detector do
       end
     end
 
+    context "with narrow no-break space (U+202F) thousands separator" do
+      it "extracts French price with narrow NBSP (3\u202f499,00€)" do
+        prices = described_class.extract_prices_from_text("3\u202f499,00€")
+        expect(prices.size).to eq(1)
+        expect(prices.first[:value]).to be_within(0.01).of(3499.0)
+      end
+
+      it "extracts two French prices with narrow NBSP from product card" do
+        text = "3\u202f499,00€ 3\u202f099,00€"
+        values = extract_values(text)
+        expect(values).to eq([3099.0, 3499.0])
+      end
+
+      it "extracts French sale prices with narrow NBSP (michelmusique.fr)" do
+        text = "3\u202f290,00€ 3\u202f090,00€"
+        values = extract_values(text)
+        expect(values).to eq([3090.0, 3290.0])
+      end
+
+      it "extracts large French price with narrow NBSP (12\u202f345,67€)" do
+        prices = described_class.extract_prices_from_text("12\u202f345,67€")
+        expect(prices.size).to eq(1)
+        expect(prices.first[:value]).to be_within(0.01).of(12345.67)
+      end
+    end
+
     context "with real-world cases" do
       it "percentage badge before prices (25% zniżki)" do
         values = extract_values("25% zniżki 100,00 zł 75,00 zł")
@@ -210,6 +240,89 @@ RSpec.describe PriceScanner::Detector do
       it "does not filter when smallest is legitimate third price" do
         values = extract_values("200,00 zł 100,00 zł 40,00 zł")
         expect(values).to eq([40.0, 100.0, 200.0])
+      end
+
+      # BUG: PlastModel.pl — "Oszczędzasz 6.40 PLN" prefix should be filtered
+      # even when split spans break the main price (121,51 seen as "51 PLN")
+      it "filters price preceded by 'Oszczędzasz' prefix" do
+        text = "51 PLN 127,91 PLN Oszczędzasz 6.40 PLN 126.96 PLN"
+        values = extract_values(text)
+        expect(values).not_to include(6.4)
+      end
+
+      it "filters price preceded by 'Oszczędzasz' even with 2 prices" do
+        text = "127,91 PLN Oszczędzasz 6.40 PLN"
+        values = extract_values(text)
+        expect(values).to eq([127.91])
+      end
+
+      it "filters 'You save' prefix in English" do
+        text = "£150.00 £120.00 You save £30.00"
+        values = extract_values(text)
+        expect(values).not_to include(30.0)
+      end
+
+      it "filters 'Rabat' prefix in Polish" do
+        text = "200,00 zł 150,00 zł Rabat 50,00 zł"
+        values = extract_values(text)
+        expect(values).not_to include(50.0)
+      end
+
+      # Savings prefix — edge cases
+      it "filters 'Oszczędzasz:' with colon" do
+        text = "200,00 zł Oszczędzasz: 50,00 zł"
+        values = extract_values(text)
+        expect(values).to eq([200.0])
+      end
+
+      it "filters 'OSZCZĘDZASZ' uppercase" do
+        text = "200,00 zł OSZCZĘDZASZ 50,00 zł"
+        values = extract_values(text)
+        expect(values).to eq([200.0])
+      end
+
+      it "filters 'Zaoszczędź' variant" do
+        text = "100,00 zł Zaoszczędź 20,00 zł"
+        values = extract_values(text)
+        expect(values).to eq([100.0])
+      end
+
+      it "filters 'Saving' in English (with 3 prices for difference detection)" do
+        text = "$100.00 $80.00 Saving $20.00"
+        values = extract_values(text)
+        expect(values).not_to include(20.0)
+      end
+
+      it "filters 'Sie sparen' in German" do
+        text = "99,00 € Sie sparen 20,00 €"
+        values = extract_values(text)
+        expect(values).to eq([99.0])
+      end
+
+      it "filters 'Discount' prefix" do
+        text = "£200.00 £150.00 Discount £50.00"
+        values = extract_values(text)
+        expect(values).not_to include(50.0)
+      end
+
+      # False positives — should NOT filter
+      it "does NOT filter price after unrelated word ending in similar letters" do
+        text = "Wysyłka 15,00 zł Cena: 200,00 zł"
+        values = extract_values(text)
+        expect(values).to include(15.0)
+      end
+
+      it "does NOT filter regular price in product listing" do
+        text = "Produkt A 50,00 zł Produkt B 30,00 zł"
+        values = extract_values(text)
+        expect(values).to include(50.0)
+        expect(values).to include(30.0)
+      end
+
+      it "does NOT filter price after 'Cena'" do
+        text = "Cena 6,40 zł 127,91 zł"
+        values = extract_values(text)
+        expect(values).to include(6.4)
       end
     end
   end

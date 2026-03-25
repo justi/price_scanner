@@ -17,13 +17,14 @@ module PriceScanner
     MULTIPLE_SPACES = /\s{2,}/
     COLLAPSE_WHITESPACE = /\s+/
     NBSP = "\u00a0"
+    NNBSP = "\u202f"
     DECIMAL_PLACES = 2
     THOUSANDS_GROUP = /.{1,3}/
 
     module_function
 
     def normalized_price(value)
-      text = value.to_s.tr(NBSP, " ").strip
+      text = value.to_s.tr(NBSP + NNBSP, "  ").strip
       return nil if text.empty?
 
       clean = clean_price_text(text)
@@ -83,7 +84,7 @@ module PriceScanner
     end
 
     def strip_single_price(cleaned, price)
-      normalized = price.to_s.tr(NBSP, " ").strip
+      normalized = price.to_s.tr(NBSP + NNBSP, "  ").strip
       return cleaned if normalized.empty?
 
       result = cleaned.gsub(normalized, "").gsub(normalized.delete(" "), "")

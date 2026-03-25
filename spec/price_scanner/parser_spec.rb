@@ -14,6 +14,14 @@ RSpec.describe PriceScanner::Parser do
       expect(described_class.normalized_price("1 019,00 zł")).to be_within(0.01).of(1019.0)
     end
 
+    it "normalizes French price with narrow no-break space (3\u202f499,00€)" do
+      expect(described_class.normalized_price("3\u202f499,00€")).to be_within(0.01).of(3499.0)
+    end
+
+    it "normalizes French price with NBSP (3\u00a0499,00€)" do
+      expect(described_class.normalized_price("3\u00a0499,00€")).to be_within(0.01).of(3499.0)
+    end
+
     it "normalizes English price with comma thousands separator (1,019.00)" do
       expect(described_class.normalized_price("$1,019.00")).to be_within(0.01).of(1019.0)
     end

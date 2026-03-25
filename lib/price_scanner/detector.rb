@@ -3,16 +3,23 @@
 module PriceScanner
   # Extracts prices from text using regex patterns with smart filtering.
   module Detector
+    # Space chars used as thousand separators: regular space, NBSP (\u00a0), narrow NBSP (\u202f)
+    SP = "[\\s\\u00a0\\u202f]"
+
     PRICE_PATTERN = /
-      (?:zł|pln|€|\$|£)[\s\u00a0]*(?:\d{1,3}(?:[.,\s\u00a0]\d{3})+|\d{1,4})(?:[.,]\d{1,2})?  |
-      (?<![a-zA-Z\d])(?:\d{1,3}(?:[.,\s\u00a0]\d{3})+|\d{1,4})[.,]\d{2}[\s\u00a0]*(?:zł|pln|€|\$|£|eur|usd|gbp)(?!\d)  |
-      (?<![a-zA-Z\d])(?:\d{1,3}(?:[.,\s\u00a0]\d{3})+|\d{1,4})[\s\u00a0]*(?:zł|pln|€|\$|£)(?!\d)
+      (?:zł|pln|€|\$|£)#{SP}*(?:\d{1,3}(?:[.,#{SP}]\d{3})+|\d{1,4})(?:[.,]\d{1,2})?  |
+      (?<![a-zA-Z\d])(?:\d{1,3}(?:[.,#{SP}]\d{3})+|\d{1,4})[.,]\d{2}#{SP}*(?:zł|pln|€|\$|£|eur|usd|gbp)(?!\d)  |
+      (?<![a-zA-Z\d])(?:\d{1,3}(?:[.,#{SP}]\d{3})+|\d{1,4})#{SP}*(?:zł|pln|€|\$|£)(?!\d)
     /ix
 
     PER_UNIT_PATTERN = %r{(?:/\s*|za\s+)(?:kg|g|mg|l|ml|szt|m[²³23]?|cm|mm|op|opak|pcs|pc|unit|each|ea|kaps|tabl|tab)\b}i
     PER_UNIT_ANCHOR = /\A#{PER_UNIT_PATTERN.source}/i
 
     NEGATIVE_PREFIXES = ["-", "\u2212"].freeze
+
+    # Prefixes that indicate the following price is a savings amount, not a product price.
+    # "Oszczędzasz 6.40 PLN" = "You save 6.40 PLN" — not the product price.
+    SAVINGS_PREFIX_PATTERN = /(?:oszcz[eę]dzasz|zaoszcz[eę]d[zź]|you\s+save|sie\s+sparen)\s*:?\s*\z/i
 
     RANGE_SEPARATOR_PATTERN = /\s*[–—]\s*|\s+-\s+/
 
@@ -65,6 +72,7 @@ module PriceScanner
       return unless value
 
       return if negative_price?(text_str, match_index)
+      return if savings_prefix?(text_str, match_index)
       return if !include_per_unit && per_unit_price?(text_str, match_index + match_str.length)
 
       clean_text = match_str.gsub(Parser::COLLAPSE_WHITESPACE, " ").strip
@@ -87,6 +95,16 @@ module PriceScanner
       i = from
       i -= 1 while i >= 0 && text_str[i] =~ /\s/
       i >= 0 ? i : nil
+    end
+
+    # Check if text before the price contains a savings prefix like "Oszczędzasz" or "You save"
+    def savings_prefix?(text_str, match_index)
+      return false unless match_index > 3
+
+      # Look at up to 30 chars before the price match
+      lookback_start = [match_index - 30, 0].max
+      text_before = text_str[lookback_start...match_index]
+      text_before.match?(SAVINGS_PREFIX_PATTERN)
     end
 
     def per_unit_price?(text_str, match_end)
@@ -147,7 +165,7 @@ module PriceScanner
     end
 
     private_class_method :scan_raw_prices, :find_price_at, :build_price_result,
-                         :negative_price?, :rindex_non_space, :per_unit_price?,
+                         :negative_price?, :rindex_non_space, :savings_prefix?, :per_unit_price?,
                          :filter_range_prices, :find_range_indices, :range_between?,
                          :filter_savings_by_difference, :savings_amount?, :matches_savings_pattern?
   end
