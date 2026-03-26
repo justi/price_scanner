@@ -116,7 +116,13 @@ module PriceScanner
       return prices if prices.size < MIN_PRICES_FOR_RANGE
 
       range_indices = find_range_indices(prices, text)
-      prices.reject.with_index { |_, idx| range_indices.include?(idx) }
+      return prices if range_indices.empty?
+
+      # Remove range prices AND any duplicates with same values.
+      # Handles accessibility markup (e.g. screen-reader-text) that repeats
+      # range prices with non-dash separators like "à" or "to".
+      range_values = range_indices.map { |idx| prices[idx][:value] }.to_set
+      prices.reject.with_index { |price, idx| range_indices.include?(idx) || range_values.include?(price[:value]) }
     end
 
     def find_range_indices(prices, text)

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4
+
+- Fix false promotions from duplicated price ranges in accessibility markup (e.g. WooCommerce `screen-reader-text`)
+- Range filter now removes all prices whose values match detected range values, not just the directly connected pair
+- Prevents "2,90€ – 16,90€" + "Plage de prix : 2,90€ à 16,90€" from producing a false 83% discount
+
 ## 0.3.0
 
 - Add `include_per_unit:` option to `extract_prices_from_text` — allows including per-unit prices (`£46.00/M`, `29,99 zł/kg`) that are filtered by default

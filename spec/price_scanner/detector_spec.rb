@@ -146,6 +146,29 @@ RSpec.describe PriceScanner::Detector do
       end
     end
 
+    context "with price ranges" do
+      it "filters prices connected by en-dash" do
+        values = extract_values("2,90 € – 16,90 €")
+        expect(values).to be_empty
+      end
+
+      it "filters prices connected by em-dash" do
+        values = extract_values("£3.29 — £92.71")
+        expect(values).to be_empty
+      end
+
+      it "filters duplicated range prices from accessibility markup" do
+        # WooCommerce screen-reader-text repeats range with "à" / "to" separator
+        values = extract_values("2,90 € – 16,90 € Plage de prix : 2,90 € à 16,90 €")
+        expect(values).to be_empty
+      end
+
+      it "keeps non-range prices when range is also present" do
+        values = extract_values("£3.29 – £92.71 Sale: £50.00")
+        expect(values).to eq([50.0])
+      end
+    end
+
     context "with model numbers containing digits before currency symbol" do
       it "does not extract false price from IP65 €75.00 (cnsuntek bug)" do
         values = extract_values("Waterproof IP65 € 75.00")
